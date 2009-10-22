@@ -1,0 +1,1 @@
+-record(yamlnode,{key=undefined,value=undefined,children=[],indent=0}).

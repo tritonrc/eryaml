@@ -1,7 +1,7 @@
 -module(yaml).
--author("Brian McKinney (brian@realitycontainment.com)")
+-author("Brian McKinney (brian@realitycontainment.com)").
 -include("yaml.hrl").
--export([parse_file/1, find/2, key/1, value/1, children/1]).
+-export([parse_file/1, find/2, find_by_path/2, key/1, value/1, children/1]).
 
 
 key(Yaml) when is_record(Yaml, yamlnode) -> Yaml#yamlnode.key.
@@ -9,6 +9,16 @@ key(Yaml) when is_record(Yaml, yamlnode) -> Yaml#yamlnode.key.
 value(Yaml) when is_record(Yaml, yamlnode) -> Yaml#yamlnode.value.
 
 children(Yaml) when is_record(Yaml, yamlnode) -> Yaml#yamlnode.children.
+
+find_by_path(Path, Yaml) ->
+  case Path of
+    [] -> Yaml;
+    [Segment|Rest] ->
+      case find(Segment, Yaml) of
+        not_found -> not_found;
+        SubYaml -> find_by_path(Rest, SubYaml)
+      end
+  end.
 
 find(SearchKey, Yaml) when is_record(Yaml, yamlnode) -> 
   case SearchKey =:= key(Yaml) of 
@@ -24,8 +34,8 @@ find(SearchKey, Yaml) when is_list(Yaml) ->
 
 load_file(Filename) -> 
   case file:read_file(Filename) of 
-  {ok,Binary} -> string:tokens(binary_to_list(Binary),"\n");
-  {error,enoent} -> []
+    {ok,Binary} -> string:tokens(binary_to_list(Binary),"\n");
+    {error,enoent} -> []
   end.
 
 parse_file(Path) ->

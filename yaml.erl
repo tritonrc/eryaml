@@ -10,27 +10,29 @@ value(Yaml) when is_record(Yaml, yamlnode) -> Yaml#yamlnode.value.
 
 children(Yaml) when is_record(Yaml, yamlnode) -> Yaml#yamlnode.children.
 
+find_by_path(Path, Yaml) when is_record(Yaml, yamlnode) ->
+  find_by_path(Path, [Yaml]);
 find_by_path(Path, Yaml) ->
   case Path of
     [] -> Yaml;
     [Segment|Rest] ->
-      case find(Segment, Yaml) of
-        not_found -> not_found;
-        SubYaml -> find_by_path(Rest, SubYaml)
+      case lists:keyfind(Segment, #yamlnode.key, Yaml) of
+        false -> not_found;
+         Node ->
+           case length(Rest) of
+             0 -> Node;
+             N -> find_by_path(Rest, children(Node))
+           end
       end
   end.
 
 find(SearchKey, Yaml) when is_record(Yaml, yamlnode) -> 
-  case SearchKey =:= key(Yaml) of 
-    true -> Yaml;
-    false -> find(SearchKey, children(Yaml))
-  end;
+  find(SearchKey, [Yaml]);
 find(SearchKey, Yaml) when is_list(Yaml) ->
-   Nodes = [Node || Node <- Yaml, SearchKey =:= key(Node)],
-   case length(Nodes) of 
-     0 -> not_found;
-     _ -> hd(Nodes)
-   end.
+  case lists:keyfind(SearchKey, #yamlnode.key, Yaml) of
+    false -> not_found;
+    Node -> Node
+  end.
 
 load_file(Filename) -> 
   case file:read_file(Filename) of 

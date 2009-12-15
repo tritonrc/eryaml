@@ -21,7 +21,7 @@ find_by_path(Path, Yaml) ->
          Node ->
            case length(Rest) of
              0 -> Node;
-             N -> find_by_path(Rest, children(Node))
+             _N -> find_by_path(Rest, children(Node))
            end
       end
   end.
@@ -90,10 +90,35 @@ parse_value([$"|Value], Node) ->
 parse_value([$'|Value], Node) ->
   {match, [{QuoteStart,_}]} = re:run(Value,"(?<!\\\\)'"),
   Node#yamlnode{value=string:substr(Value,1,QuoteStart)};
+parse_value([$[|Value], Node) ->
+  parse_array_value(Value, Node);
 parse_value(Value, Node) ->
   Node#yamlnode{value=string:substr(Value,1,string:cspan(Value,"#"))}.
 
-count_indent([],_Ctr) -> 0;
+%% BTM - This works so long as there are no commas in values of the array
+parse_array_value(Line, Node) ->
+  Tokens = string:tokens(string:strip(Line,right, $]), ","),
+  STokens = lists:foldl(
+    fun(Value, Values) ->
+      SValue = string:strip(Value),
+      [Lead|Follow] = SValue,
+      Scrubbed = case Lead of
+        $' ->
+          {match, [{SingleStart,_}]} = re:run(Follow,"(?<!\\\\)'"),
+          string:substr(Follow,1,SingleStart);
+        $" ->
+          {match, [{DoubleStart,_}]} = re:run(Follow,"(?<!\\\\)\""),
+          string:substr(Follow,1,DoubleStart);
+        _ -> SValue
+      end,
+      [Scrubbed|Values]
+    end,
+    [],
+    Tokens
+  ),
+  Node#yamlnode{value=lists:reverse(STokens)}.
+  
+count_indent([],_Ctr) -> -1;
 count_indent(Line,Ctr) ->
   case Line of 
     [32|Rest] -> count_indent(Rest,Ctr+1);
